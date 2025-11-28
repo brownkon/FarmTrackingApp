@@ -22,3 +22,5 @@ android/local.properties
 
 # macOS cruft
 .DS_Store
+
+*.env

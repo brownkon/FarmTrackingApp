@@ -1,3 +1,5 @@
+// (imports for low-level I/O removed)
+
 import 'package:english_words/english_words.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -6,11 +8,21 @@ import 'package:background_locator_2/background_locator.dart';
 import 'package:background_locator_2/settings/android_settings.dart';
 import 'package:background_locator_2/settings/ios_settings.dart';
 import 'package:background_locator_2/settings/locator_settings.dart';
+ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'location_callback_handler.dart';
+import 'history_page.dart';
+import 'big_card.dart';
+import "package:supabase_flutter/supabase_flutter.dart";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
+  await Supabase.initialize(
+     url: 'https://qxzqmuenmaoggyphkfcy.supabase.co',
+     anonKey: dotenv.env["supabaseAnonKey"] ?? '');
+  final supabase = Supabase.instance.client;
+  await supabase.auth.signInAnonymously();  
   await BackgroundLocator.initialize();
   runApp(const MyApp());
 }
@@ -68,13 +80,13 @@ class MyAppState extends ChangeNotifier {
         disposeCallback: LocationCallbackHandler.disposeCallback,
         autoStop: false,
         iosSettings: const IOSSettings(
-          accuracy: LocationAccuracy.NAVIGATION,
-          distanceFilter: 0, // meters
+          accuracy: LocationAccuracy.HIGH,
+          distanceFilter: 10, // meters (lower for more frequent updates during testing)
         ),
         androidSettings: const AndroidSettings(
-          accuracy: LocationAccuracy.NAVIGATION,
-          interval: 5,       // seconds between updates
-          distanceFilter: 0, // meters
+          accuracy: LocationAccuracy.HIGH,
+          interval: 10,       // seconds between updates (for testing)
+          distanceFilter: 10, // meters
           androidNotificationSettings: AndroidNotificationSettings(
             notificationChannelName: 'GPS Tracking',
             notificationTitle: 'Background location is ON',
@@ -149,6 +161,9 @@ class _MyHomePageState extends State<MyHomePage> {
       case 1:
         page = FavoritesPage();
         break;
+      case 2:
+        page = const HistoryPage();
+        break;
       default:
         throw UnimplementedError('no widget for $selectedIndex');
     }
@@ -161,13 +176,17 @@ class _MyHomePageState extends State<MyHomePage> {
               child: NavigationRail(
                 extended: constraints.maxWidth >= 600,  // ← Here.
                 destinations: [
-                  NavigationRailDestination(
+                  const NavigationRailDestination(
                     icon: Icon(Icons.home),
                     label: Text('Home'),
                   ),
-                  NavigationRailDestination(
+                  const NavigationRailDestination(
                     icon: Icon(Icons.favorite),
                     label: Text('Favorites'),
+                  ),
+                  const NavigationRailDestination(
+                    icon: Icon(Icons.history),
+                    label: Text('History'),
                   ),
                 ],
                 selectedIndex: selectedIndex,
@@ -259,37 +278,6 @@ class GeneratorPage extends StatelessWidget {
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-// ...
-
-class BigCard extends StatelessWidget {
-  const BigCard({
-    super.key,
-    required this.pair,
-  });
-
-  final WordPair pair;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final style = theme.textTheme.displayMedium!.copyWith(
-      color: theme.colorScheme.onPrimary,
-    );     
-    return Card(
-      color: theme.colorScheme.primary,
-      elevation: 3,
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Text(
-          pair.asLowerCase,
-          style: style,
-          semanticsLabel: "${pair.first} ${pair.second}",
-        ),
       ),
     );
   }
